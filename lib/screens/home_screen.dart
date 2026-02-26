@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../widgets/sky_atmosphere.dart';
 import 'loading_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -10,106 +11,63 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  late AnimationController _floatController;
-  late AnimationController _fadeController;
-  late Animation<double> _floatAnimation;
-  late Animation<double> _fadeAnimation;
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _fadeCtrl;
+  late Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-
-    _floatController = AnimationController(
-      duration: const Duration(seconds: 4),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _fadeController = AnimationController(
+    _fadeCtrl = AnimationController(
       duration: const Duration(milliseconds: 900),
       vsync: this,
     )..forward();
-
-    _floatAnimation = Tween<double>(begin: -8, end: 8).animate(
-      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
-    );
-
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    );
+    _fade = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
   }
 
   @override
   void dispose() {
-    _floatController.dispose();
-    _fadeController.dispose();
+    _fadeCtrl.dispose();
     super.dispose();
+  }
+
+  void _launch() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, anim, __) => const LoadingScreen(),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 450),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 600),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [
-                    const Color(0xFF0D1B3E),
-                    const Color(0xFF1A3461),
-                    const Color(0xFF1F4287),
-                  ]
-                : [
-                    const Color(0xFF48B5E8),
-                    const Color(0xFF2183C4),
-                    const Color(0xFF1565C0),
-                  ],
-          ),
-        ),
+      body: SkyAtmosphere(
         child: SafeArea(
           child: FadeTransition(
-            opacity: _fadeAnimation,
+            opacity: _fade,
             child: Stack(
               children: [
-                // Nuages décoratifs subtils
-                Positioned(
-                  top: 30,
-                  left: -30,
-                  child: _CloudShape(
-                    width: 180,
-                    opacity: isDark ? 0.04 : 0.12,
-                  ),
-                ),
-                Positioned(
-                  top: 80,
-                  right: -20,
-                  child: _CloudShape(
-                    width: 140,
-                    opacity: isDark ? 0.03 : 0.09,
-                  ),
-                ),
-
-                // Bouton thème en haut à droite
+                // Bouton thème (haut droite)
                 Positioned(
                   top: 10,
                   right: 16,
                   child: ValueListenableBuilder<ThemeMode>(
                     valueListenable: themeNotifier,
-                    builder: (context, themeMode, _) {
-                      return _TopButton(
+                    builder: (context, mode, _) {
+                      return _GlassBtn(
                         onTap: () {
-                          themeNotifier.value =
-                              themeMode == ThemeMode.light
-                                  ? ThemeMode.dark
-                                  : ThemeMode.light;
+                          themeNotifier.value = mode == ThemeMode.light
+                              ? ThemeMode.dark
+                              : ThemeMode.light;
                         },
                         child: Icon(
-                          themeMode == ThemeMode.light
+                          mode == ThemeMode.light
                               ? Icons.nights_stay_rounded
                               : Icons.wb_sunny_rounded,
                           color: Colors.white,
@@ -120,91 +78,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
 
-                // Contenu principal
+                // Contenu centré
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 28),
                   child: Column(
                     children: [
-                      const SizedBox(height: 60),
-
-                      // Soleil animé
-                      AnimatedBuilder(
-                        animation: _floatAnimation,
-                        builder: (context, child) {
-                          return Transform.translate(
-                            offset: Offset(0, _floatAnimation.value),
-                            child: child,
-                          );
-                        },
-                        child: _SunWidget(isDark: isDark),
-                      ),
-
-                      const SizedBox(height: 44),
+                      const Spacer(flex: 3),
 
                       // Titre
                       const Text(
                         'Météo',
                         style: TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.w300,
+                          fontSize: 52,
+                          fontWeight: FontWeight.w200,
                           color: Colors.white,
-                          letterSpacing: -1,
+                          letterSpacing: -2,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
-                        'Météo en temps réel pour 5 villes du monde',
+                        'Météo en temps réel dans le monde',
                         style: TextStyle(
                           fontSize: 15,
-                          color: Colors.white.withValues(alpha: 0.75),
-                          height: 1.5,
+                          color: Colors.white.withValues(alpha: 0.68),
                         ),
                         textAlign: TextAlign.center,
                       ),
 
-                      const SizedBox(height: 48),
+                      const Spacer(flex: 2),
 
-                      // Carte d'accueil frosted
+                      // Carte frosted : 5 villes
                       _FrostedCard(
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _CityPill(flag: '🗼', city: 'Paris'),
-                                _CityPill(flag: '🗽', city: 'New York'),
-                                _CityPill(flag: '⛩️', city: 'Tokyo'),
-                                _CityPill(flag: '🎡', city: 'London'),
-                                _CityPill(flag: '🌍', city: 'Dakar'),
-                              ],
-                            ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: const [
+                            _CityPill(flag: '🗼', city: 'Paris'),
+                            _CityPill(flag: '🗽', city: 'New York'),
+                            _CityPill(flag: '⛩️', city: 'Tokyo'),
+                            _CityPill(flag: '🎡', city: 'London'),
+                            _CityPill(flag: '🌍', city: 'Dakar'),
                           ],
                         ),
                       ),
 
-                      const Spacer(),
+                      const Spacer(flex: 3),
 
-                      // Bouton principal
-                      _LaunchButton(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            PageRouteBuilder(
-                              pageBuilder: (_, animation, __) =>
-                                  const LoadingScreen(),
-                              transitionsBuilder:
-                                  (_, animation, __, child) {
-                                return FadeTransition(
-                                  opacity: animation,
-                                  child: child,
-                                );
-                              },
-                              transitionDuration:
-                                  const Duration(milliseconds: 400),
-                            ),
-                          );
-                        },
-                      ),
+                      // Bouton lancer
+                      _LaunchButton(onTap: _launch),
 
                       const SizedBox(height: 36),
                     ],
@@ -219,60 +139,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
-// ─── Widgets locaux ──────────────────────────────────────────────────────────
-
-class _SunWidget extends StatelessWidget {
-  final bool isDark;
-  const _SunWidget({required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Halo doux
-        Container(
-          width: 170,
-          height: 170,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                const Color(0xFFFFD426).withValues(alpha: isDark ? 0.12 : 0.20),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
-        // Corps du soleil
-        Container(
-          width: 110,
-          height: 110,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFFFFE566), Color(0xFFFFAA00)],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFFCC00).withValues(alpha: 0.35),
-                blurRadius: 40,
-                spreadRadius: 8,
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.wb_sunny_rounded,
-            size: 60,
-            color: Colors.white,
-          ),
-        ),
-      ],
-    );
-  }
-}
+// ─── Widgets locaux ───────────────────────────────────────────────────────────
 
 class _FrostedCard extends StatelessWidget {
   final Widget child;
@@ -281,16 +148,16 @@ class _FrostedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(22),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 14),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(24),
+            color: Colors.white.withValues(alpha: 0.13),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.22),
+              color: Colors.white.withValues(alpha: 0.20),
               width: 1,
             ),
           ),
@@ -309,6 +176,7 @@ class _CityPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(flag, style: const TextStyle(fontSize: 24)),
         const SizedBox(height: 5),
@@ -316,7 +184,7 @@ class _CityPill extends StatelessWidget {
           city,
           style: TextStyle(
             fontSize: 10,
-            color: Colors.white.withValues(alpha: 0.70),
+            color: Colors.white.withValues(alpha: 0.65),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -325,10 +193,10 @@ class _CityPill extends StatelessWidget {
   }
 }
 
-class _TopButton extends StatelessWidget {
+class _GlassBtn extends StatelessWidget {
   final Widget child;
   final VoidCallback onTap;
-  const _TopButton({required this.child, required this.onTap});
+  const _GlassBtn({required this.child, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -343,9 +211,8 @@ class _TopButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.20),
-              ),
+              border:
+                  Border.all(color: Colors.white.withValues(alpha: 0.22)),
             ),
             child: child,
           ),
@@ -364,68 +231,53 @@ class _LaunchButton extends StatefulWidget {
 }
 
 class _LaunchButtonState extends State<_LaunchButton> {
-  bool _pressed = false;
+  bool _down = false;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
+      onTapDown: (_) => setState(() => _down = true),
       onTapUp: (_) {
-        setState(() => _pressed = false);
+        setState(() => _down = false);
         widget.onTap();
       },
-      onTapCancel: () => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _down = false),
       child: AnimatedScale(
-        scale: _pressed ? 0.96 : 1.0,
+        scale: _down ? 0.96 : 1.0,
         duration: const Duration(milliseconds: 100),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.22),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.40),
-              width: 1,
-            ),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Découvrir la météo mondiale',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.2,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.20),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.38),
+                  width: 1,
                 ),
               ),
-              SizedBox(width: 10),
-              Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-            ],
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Découvrir la météo mondiale',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Icon(Icons.arrow_forward_rounded,
+                      color: Colors.white, size: 20),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CloudShape extends StatelessWidget {
-  final double width;
-  final double opacity;
-  const _CloudShape({required this.width, required this.opacity});
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: opacity,
-      child: Container(
-        width: width,
-        height: width * 0.55,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(width / 2),
         ),
       ),
     );

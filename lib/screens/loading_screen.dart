@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/weather_model.dart';
 import '../services/weather_service.dart';
 import '../widgets/weather_card.dart';
+import '../widgets/sky_atmosphere.dart';
 import 'detail_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
@@ -14,7 +15,7 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   final List<String> cities = ['Paris', 'New York', 'Tokyo', 'London', 'Dakar'];
 
   // Messages exacts du cahier des charges
@@ -35,36 +36,23 @@ class _LoadingScreenState extends State<LoadingScreen>
   String errorMessage = '';
   Timer? _timer;
 
-  late AnimationController _fadeController;
-  late AnimationController _progressController;
-  late Animation<double> _fadeAnimation;
+  late AnimationController _fadeCtrl;
+  late Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-
-    _fadeController = AnimationController(
+    _fadeCtrl = AnimationController(
       duration: const Duration(milliseconds: 700),
       vsync: this,
     );
-
-    _progressController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    );
-
+    _fade = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     startLoading();
   }
 
   void startLoading() {
     _timer?.cancel();
-    _fadeController.reset();
-
+    _fadeCtrl.reset();
     setState(() {
       weatherList = [];
       progress = 0.0;
@@ -76,14 +64,14 @@ class _LoadingScreenState extends State<LoadingScreen>
     });
 
     bool isFetching = false;
-
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       if (isFetching) return;
       isFetching = true;
 
       if (cityIndex < cities.length) {
         try {
-          final weather = await _weatherService.fetchWeather(cities[cityIndex]);
+          final weather =
+              await _weatherService.fetchWeather(cities[cityIndex]);
           if (!mounted) return;
           setState(() {
             weatherList.add(weather);
@@ -98,7 +86,7 @@ class _LoadingScreenState extends State<LoadingScreen>
             hasError = true;
             isLoading = false;
             errorMessage =
-                'Erreur de chargement.\nVérifiez votre connexion internet ou votre clé API.';
+                'Erreur de chargement.\nVérifiez votre connexion ou votre clé API.';
           });
         }
       }
@@ -108,10 +96,8 @@ class _LoadingScreenState extends State<LoadingScreen>
       if (cityIndex >= cities.length) {
         timer.cancel();
         if (!mounted) return;
-        setState(() {
-          isLoading = false;
-        });
-        _fadeController.forward();
+        setState(() => isLoading = false);
+        _fadeCtrl.forward();
       }
     });
   }
@@ -119,39 +105,18 @@ class _LoadingScreenState extends State<LoadingScreen>
   @override
   void dispose() {
     _timer?.cancel();
-    _fadeController.dispose();
-    _progressController.dispose();
+    _fadeCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 600),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [
-                    const Color(0xFF0D1B3E),
-                    const Color(0xFF1A3461),
-                    const Color(0xFF1F4287),
-                  ]
-                : [
-                    const Color(0xFF48B5E8),
-                    const Color(0xFF2183C4),
-                    const Color(0xFF1565C0),
-                  ],
-          ),
-        ),
+      body: SkyAtmosphere(
         child: SafeArea(
           child: Column(
             children: [
-              _buildTopBar(context),
+              _topBar(context),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -167,7 +132,9 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
+  // ── Top bar ─────────────────────────────────────────────────────────────────
+
+  Widget _topBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Row(
@@ -200,7 +167,7 @@ class _LoadingScreenState extends State<LoadingScreen>
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -208,7 +175,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
   }
 
-  // ── État : chargement ──────────────────────────────────────────────────────
+  // ── État : chargement ────────────────────────────────────────────────────────
 
   Widget _buildLoading() {
     return Column(
@@ -221,47 +188,47 @@ class _LoadingScreenState extends State<LoadingScreen>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Cercle de fond
+              // Piste de fond
               SizedBox(
                 width: 190,
                 height: 190,
                 child: CircularProgressIndicator(
                   value: 1.0,
-                  strokeWidth: 8,
-                  color: Colors.white.withValues(alpha: 0.10),
+                  strokeWidth: 7,
+                  color: Colors.white.withValues(alpha: 0.12),
                   strokeCap: StrokeCap.round,
                 ),
               ),
-              // Cercle de progression
+              // Progression
               SizedBox(
                 width: 190,
                 height: 190,
                 child: CircularProgressIndicator(
                   value: progress,
-                  strokeWidth: 8,
+                  strokeWidth: 7,
                   color: Colors.white,
                   backgroundColor: Colors.transparent,
                   strokeCap: StrokeCap.round,
                 ),
               ),
-              // Pourcentage au centre
+              // Texte central
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     '${(progress * 100).toInt()}%',
                     style: const TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.w200,
+                      fontSize: 46,
+                      fontWeight: FontWeight.w100,
                       color: Colors.white,
                       letterSpacing: -2,
                     ),
                   ),
                   Text(
-                    '$cityIndex / ${cities.length} villes',
+                    '$cityIndex / ${cities.length}',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.60),
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.55),
                     ),
                   ),
                 ],
@@ -270,18 +237,18 @@ class _LoadingScreenState extends State<LoadingScreen>
           ),
         ),
 
-        const SizedBox(height: 48),
+        const SizedBox(height: 44),
 
-        // Message d'attente (du cahier des charges)
+        // Message animé (du cahier des charges)
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 500),
-          transitionBuilder: (child, animation) => FadeTransition(
-            opacity: animation,
+          transitionBuilder: (child, anim) => FadeTransition(
+            opacity: anim,
             child: SlideTransition(
               position: Tween<Offset>(
-                begin: const Offset(0, 0.15),
+                begin: const Offset(0, 0.12),
                 end: Offset.zero,
-              ).animate(animation),
+              ).animate(anim),
               child: child,
             ),
           ),
@@ -298,16 +265,17 @@ class _LoadingScreenState extends State<LoadingScreen>
           ),
         ),
 
-        const SizedBox(height: 40),
+        const SizedBox(height: 36),
 
-        // Villes chargées
+        // Chips des villes chargées
         if (weatherList.isNotEmpty) ...[
           Text(
-            'Déjà chargé :',
+            'VILLES CHARGÉES',
             style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.50),
-              letterSpacing: 0.5,
+              fontSize: 11,
+              color: Colors.white.withValues(alpha: 0.45),
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 12),
@@ -324,7 +292,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
+                      color: Colors.white.withValues(alpha: 0.16),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -353,28 +321,28 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
   }
 
-  // ── État : erreur ──────────────────────────────────────────────────────────
+  // ── État : erreur ────────────────────────────────────────────────────────────
 
   Widget _buildError() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          width: 90,
-          height: 90,
+          width: 88,
+          height: 88,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white.withValues(alpha: 0.12),
           ),
-          child:
-              const Icon(Icons.cloud_off_rounded, size: 44, color: Colors.white),
+          child: const Icon(Icons.cloud_off_rounded,
+              size: 42, color: Colors.white),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 26),
         const Text(
           'Oups…',
           style: TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.w300,
+            fontSize: 28,
+            fontWeight: FontWeight.w200,
             color: Colors.white,
           ),
         ),
@@ -384,12 +352,12 @@ class _LoadingScreenState extends State<LoadingScreen>
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 15,
-            color: Colors.white.withValues(alpha: 0.70),
+            color: Colors.white.withValues(alpha: 0.65),
             height: 1.6,
           ),
         ),
-        const SizedBox(height: 40),
-        _PillButton(
+        const SizedBox(height: 36),
+        _PillBtn(
           label: 'Réessayer',
           icon: Icons.refresh_rounded,
           onTap: startLoading,
@@ -398,20 +366,20 @@ class _LoadingScreenState extends State<LoadingScreen>
     );
   }
 
-  // ── État : résultats ───────────────────────────────────────────────────────
+  // ── État : résultats ─────────────────────────────────────────────────────────
 
   Widget _buildResults() {
     return FadeTransition(
-      opacity: _fadeAnimation,
+      opacity: _fade,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           const Text(
             'Résultats',
             style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w300,
+              fontSize: 34,
+              fontWeight: FontWeight.w200,
               color: Colors.white,
               letterSpacing: -0.5,
             ),
@@ -419,12 +387,11 @@ class _LoadingScreenState extends State<LoadingScreen>
           Text(
             '${weatherList.length} villes · mis à jour maintenant',
             style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 13,
+              color: Colors.white.withValues(alpha: 0.50),
             ),
           ),
-          const SizedBox(height: 20),
-
+          const SizedBox(height: 16),
           Expanded(
             child: ListView.builder(
               itemCount: weatherList.length,
@@ -432,53 +399,45 @@ class _LoadingScreenState extends State<LoadingScreen>
               itemBuilder: (context, index) {
                 return TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0, end: 1),
-                  duration:
-                      Duration(milliseconds: 250 + index * 80),
+                  duration: Duration(milliseconds: 260 + index * 80),
                   curve: Curves.easeOut,
-                  builder: (context, value, child) {
-                    return Opacity(
-                      opacity: value,
-                      child: Transform.translate(
-                        offset: Offset(0, 16 * (1 - value)),
-                        child: child,
-                      ),
-                    );
-                  },
+                  builder: (context, v, child) => Opacity(
+                    opacity: v,
+                    child: Transform.translate(
+                      offset: Offset(0, 14 * (1 - v)),
+                      child: child,
+                    ),
+                  ),
                   child: WeatherCard(
                     weather: weatherList[index],
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        PageRouteBuilder(
-                          pageBuilder: (_, animation, __) =>
-                              DetailScreen(weather: weatherList[index]),
-                          transitionsBuilder: (_, animation, __, child) {
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(1, 0),
-                                end: Offset.zero,
-                              ).animate(CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
-                              )),
-                              child: child,
-                            );
-                          },
-                          transitionDuration:
-                              const Duration(milliseconds: 380),
+                    onTap: () => Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (_, anim, __) =>
+                            DetailScreen(weather: weatherList[index]),
+                        transitionsBuilder: (_, anim, __, child) =>
+                            SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(1, 0),
+                            end: Offset.zero,
+                          ).animate(CurvedAnimation(
+                            parent: anim,
+                            curve: Curves.easeOutCubic,
+                          )),
+                          child: child,
                         ),
-                      );
-                    },
+                        transitionDuration:
+                            const Duration(milliseconds: 380),
+                      ),
+                    ),
                   ),
                 );
               },
             ),
           ),
-
           const SizedBox(height: 12),
-
           // Bouton Recommencer (exigence du cahier)
-          _PillButton(
+          _PillBtn(
             label: 'Recommencer',
             icon: Icons.refresh_rounded,
             onTap: startLoading,
@@ -490,14 +449,14 @@ class _LoadingScreenState extends State<LoadingScreen>
   }
 }
 
-// ─── Bouton pill partagé ─────────────────────────────────────────────────────
+// ─── Bouton pill ──────────────────────────────────────────────────────────────
 
-class _PillButton extends StatelessWidget {
+class _PillBtn extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
 
-  const _PillButton({
+  const _PillBtn({
     required this.label,
     required this.icon,
     required this.onTap,
@@ -515,10 +474,10 @@ class _PillButton extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 17),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
+              color: Colors.white.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.28),
+                color: Colors.white.withValues(alpha: 0.26),
               ),
             ),
             child: Row(
@@ -531,7 +490,7 @@ class _PillButton extends StatelessWidget {
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

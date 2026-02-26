@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/weather_model.dart';
+import '../widgets/sky_atmosphere.dart';
 
 class DetailScreen extends StatefulWidget {
   final WeatherModel weather;
@@ -13,46 +14,29 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  late AnimationController _ctrl;
   late Animation<double> _fade;
   late Animation<Offset> _slide;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 700),
+    _ctrl = AnimationController(
+      duration: const Duration(milliseconds: 750),
       vsync: this,
     )..forward();
 
-    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     _slide = Tween<Offset>(
-      begin: const Offset(0, 0.12),
+      begin: const Offset(0, 0.10),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _ctrl.dispose();
     super.dispose();
-  }
-
-  // Couleurs du ciel selon la température
-  List<Color> _skyColors(double temp) {
-    if (temp < 0) {
-      return [const Color(0xFF1A237E), const Color(0xFF283593), const Color(0xFF3949AB)];
-    }
-    if (temp < 12) {
-      return [const Color(0xFF0D2137), const Color(0xFF1565C0), const Color(0xFF1976D2)];
-    }
-    if (temp < 22) {
-      return [const Color(0xFF0D47A1), const Color(0xFF1565C0), const Color(0xFF42A5F5)];
-    }
-    if (temp < 30) {
-      return [const Color(0xFF1565C0), const Color(0xFFE65100), const Color(0xFFFF8F00)];
-    }
-    return [const Color(0xFFB71C1C), const Color(0xFFE53935), const Color(0xFFFF7043)];
   }
 
   Future<void> _openMaps() async {
@@ -66,25 +50,18 @@ class _DetailScreenState extends State<DetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final sky = _skyColors(widget.weather.temperature);
-
+    // SkyAtmosphere reçoit l'icône météo de la VILLE → jour/nuit exact
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: sky,
-          ),
-        ),
+      body: SkyAtmosphere(
+        weatherIcon: widget.weather.icon,
         child: SafeArea(
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // ── Header fixe ───────────────────────────────────────────────
+              // ── Bouton retour ──────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                   child: Row(
                     children: [
                       GestureDetector(
@@ -105,11 +82,8 @@ class _DetailScreenState extends State<DetailScreen>
                                       Colors.white.withValues(alpha: 0.22),
                                 ),
                               ),
-                              child: const Icon(
-                                Icons.arrow_back_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
+                              child: const Icon(Icons.arrow_back_rounded,
+                                  color: Colors.white, size: 20),
                             ),
                           ),
                         ),
@@ -119,14 +93,14 @@ class _DetailScreenState extends State<DetailScreen>
                 ),
               ),
 
-              // ── Hero météo (comme Apple Weather) ──────────────────────────
+              // ── Hero météo (style Apple Weather) ──────────────────────────
               SliverToBoxAdapter(
                 child: FadeTransition(
                   opacity: _fade,
                   child: SlideTransition(
                     position: _slide,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 32, 28, 0),
+                      padding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -135,27 +109,26 @@ class _DetailScreenState extends State<DetailScreen>
                             widget.weather.city,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 36,
+                              fontSize: 38,
                               fontWeight: FontWeight.w300,
                               letterSpacing: -0.5,
                             ),
                           ),
-
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 4),
 
                           // Condition météo
                           Text(
                             widget.weather.description,
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.70),
+                              color: Colors.white.withValues(alpha: 0.68),
                               fontSize: 16,
                               fontWeight: FontWeight.w300,
                             ),
                           ),
 
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
 
-                          // Énorme température (style Apple)
+                          // Énorme température (style Apple — ultra fine)
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -164,19 +137,19 @@ class _DetailScreenState extends State<DetailScreen>
                                     .toStringAsFixed(0),
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 96,
+                                  fontSize: 100,
                                   fontWeight: FontWeight.w100,
-                                  letterSpacing: -4,
+                                  letterSpacing: -5,
                                   height: 1,
                                 ),
                               ),
                               const Padding(
-                                padding: EdgeInsets.only(top: 16),
+                                padding: EdgeInsets.only(top: 18),
                                 child: Text(
                                   '°C',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 36,
+                                    fontSize: 34,
                                     fontWeight: FontWeight.w200,
                                   ),
                                 ),
@@ -184,24 +157,25 @@ class _DetailScreenState extends State<DetailScreen>
                             ],
                           ),
 
-                          // Icône météo + ressentie
+                          // Icône + feeling
+                          const SizedBox(height: 4),
                           Row(
                             children: [
                               Image.network(
                                 'https://openweathermap.org/img/wn/${widget.weather.icon}@2x.png',
-                                width: 50,
-                                height: 50,
+                                width: 48,
+                                height: 48,
                                 errorBuilder: (_, __, ___) => const Icon(
                                     Icons.wb_sunny_rounded,
                                     color: Colors.white,
-                                    size: 36),
+                                    size: 34),
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                _tempLabel(widget.weather.temperature),
+                                _tempFeeling(widget.weather.temperature),
                                 style: TextStyle(
                                   color:
-                                      Colors.white.withValues(alpha: 0.65),
+                                      Colors.white.withValues(alpha: 0.60),
                                   fontSize: 15,
                                   fontWeight: FontWeight.w300,
                                 ),
@@ -218,16 +192,16 @@ class _DetailScreenState extends State<DetailScreen>
               // ── Séparateur ─────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 28, vertical: 26),
                   child: Divider(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: Colors.white.withValues(alpha: 0.16),
                     thickness: 0.5,
                   ),
                 ),
               ),
 
-              // ── Tuiles d'infos (style Apple Weather widget grid) ──────────
+              // ── Grille d'infos (style tuiles Apple Weather) ────────────────
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 sliver: SliverGrid(
@@ -245,13 +219,13 @@ class _DetailScreenState extends State<DetailScreen>
                       iconColor: const Color(0xFF80CBC4),
                     ),
                     _InfoTile(
-                      icon: Icons.explore_rounded,
+                      icon: Icons.my_location_rounded,
                       label: 'Latitude',
                       value: widget.weather.lat.toStringAsFixed(3),
                       iconColor: const Color(0xFFFFCC80),
                     ),
                     _InfoTile(
-                      icon: Icons.explore_outlined,
+                      icon: Icons.explore_rounded,
                       label: 'Longitude',
                       value: widget.weather.lon.toStringAsFixed(3),
                       iconColor: const Color(0xFFFFCC80),
@@ -262,7 +236,7 @@ class _DetailScreenState extends State<DetailScreen>
                     crossAxisCount: 2,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    childAspectRatio: 1.45,
+                    childAspectRatio: 1.5,
                   ),
                 ),
               ),
@@ -270,7 +244,7 @@ class _DetailScreenState extends State<DetailScreen>
               // ── Bouton Google Maps ─────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 38),
                   child: _MapsButton(onTap: _openMaps),
                 ),
               ),
@@ -281,7 +255,7 @@ class _DetailScreenState extends State<DetailScreen>
     );
   }
 
-  String _tempLabel(double t) {
+  String _tempFeeling(double t) {
     if (t < 0) return 'Conditions glaciales';
     if (t < 12) return 'Temps froid';
     if (t < 22) return 'Temps agréable';
@@ -290,7 +264,7 @@ class _DetailScreenState extends State<DetailScreen>
   }
 }
 
-// ─── Tuile d'information ──────────────────────────────────────────────────────
+// ─── Tuile d'info ─────────────────────────────────────────────────────────────
 
 class _InfoTile extends StatelessWidget {
   final IconData icon;
@@ -325,25 +299,27 @@ class _InfoTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Label + icône
               Row(
                 children: [
-                  Icon(icon, size: 14, color: iconColor),
+                  Icon(icon, size: 13, color: iconColor),
                   const SizedBox(width: 6),
                   Text(
                     label.toUpperCase(),
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.55),
+                      color: Colors.white.withValues(alpha: 0.52),
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.8,
                     ),
                   ),
                 ],
               ),
+              // Valeur
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 26,
+                  fontSize: 28,
                   fontWeight: FontWeight.w200,
                   color: Colors.white,
                   letterSpacing: -0.5,
@@ -389,10 +365,10 @@ class _MapsButtonState extends State<_MapsButton> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
+                color: Colors.white.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.28),
+                  color: Colors.white.withValues(alpha: 0.26),
                 ),
               ),
               child: const Row(
