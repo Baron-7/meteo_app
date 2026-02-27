@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/weather_model.dart';
 
@@ -37,111 +36,103 @@ class WeatherCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        child: ClipRRect(
+        padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.22),
           borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.22),
-                  width: 1,
-                ),
-              ),
-              child: Row(
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.30),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Icône météo
+            Image.network(
+              'https://openweathermap.org/img/wn/${weather.icon}@2x.png',
+              width: 56,
+              height: 56,
+              errorBuilder: (_, _, _) {
+                return Icon(Icons.wb_cloudy_rounded,
+                    size: 44, color: Colors.white.withValues(alpha: 0.7));
+              },
+            ),
+
+            const SizedBox(width: 10),
+
+            // Infos texte
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icône météo
-                  Image.network(
-                    'https://openweathermap.org/img/wn/${weather.icon}@2x.png',
-                    width: 56,
-                    height: 56,
-                    errorBuilder: (_, _, _) {
-                      return Icon(Icons.wb_cloudy_rounded,
-                          size: 44, color: Colors.white.withValues(alpha: 0.7));
-                    },
-                  ),
-
-                  const SizedBox(width: 10),
-
-                  // Infos texte
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          weather.city,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          weather.description,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.65),
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            _MiniStat(
-                              icon: Icons.water_drop_rounded,
-                              label: '${weather.humidity}%',
-                              color: Colors.lightBlueAccent,
-                            ),
-                            const SizedBox(width: 12),
-                            _MiniStat(
-                              icon: Icons.air_rounded,
-                              label: '${weather.windSpeed} m/s',
-                              color: Colors.tealAccent,
-                            ),
-                          ],
-                        ),
-                      ],
+                  Text(
+                    weather.city,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-
-                  // Température (grand, à droite — style Apple)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  const SizedBox(height: 3),
+                  Text(
+                    weather.description,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.65),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
                     children: [
-                      Text(
-                        '${weather.temperature.toStringAsFixed(0)}°',
-                        style: TextStyle(
-                          fontSize: 42,
-                          fontWeight: FontWeight.w200,
-                          color: accent,
-                          height: 1,
-                          letterSpacing: -1,
-                        ),
+                      _MiniStat(
+                        icon: Icons.water_drop_rounded,
+                        label: '${weather.humidity}%',
+                        color: Colors.lightBlueAccent,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _tempFeeling(weather.temperature),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: accent.withValues(alpha: 0.80),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: Colors.white.withValues(alpha: 0.35),
-                        size: 18,
+                      const SizedBox(width: 12),
+                      _MiniStat(
+                        icon: Icons.air_rounded,
+                        label: '${weather.windSpeed} m/s',
+                        color: Colors.tealAccent,
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-          ),
+
+            // Température (grand, à droite — style Apple)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${weather.temperature.toStringAsFixed(0)}°',
+                  style: TextStyle(
+                    fontSize: 42,
+                    fontWeight: FontWeight.w200,
+                    color: accent,
+                    height: 1,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _tempFeeling(weather.temperature),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: accent.withValues(alpha: 0.80),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white.withValues(alpha: 0.35),
+                  size: 18,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
