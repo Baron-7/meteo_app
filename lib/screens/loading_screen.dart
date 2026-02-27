@@ -413,9 +413,9 @@ class _LoadingScreenState extends State<LoadingScreen>
                     onTap: () => Navigator.push(
                       context,
                       PageRouteBuilder(
-                        pageBuilder: (_, anim, __) =>
+                        pageBuilder: (_, anim, _) =>
                             DetailScreen(weather: weatherList[index]),
-                        transitionsBuilder: (_, anim, __, child) =>
+                        transitionsBuilder: (_, anim, _, child) =>
                             SlideTransition(
                           position: Tween<Offset>(
                             begin: const Offset(1, 0),

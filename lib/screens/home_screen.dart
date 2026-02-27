@@ -36,8 +36,8 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, anim, __) => const LoadingScreen(),
-        transitionsBuilder: (_, anim, __, child) =>
+        pageBuilder: (_, anim, _) => const LoadingScreen(),
+        transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 450),
       ),

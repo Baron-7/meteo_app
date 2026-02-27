@@ -25,10 +25,9 @@ class _DetailScreenState extends State<DetailScreen>
       duration: const Duration(milliseconds: 750),
       vsync: this,
     )..forward();
-
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     _slide = Tween<Offset>(
-      begin: const Offset(0, 0.10),
+      begin: const Offset(0, 0.08),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
   }
@@ -50,202 +49,182 @@ class _DetailScreenState extends State<DetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    // SkyAtmosphere reçoit l'icône météo de la VILLE → jour/nuit exact
+    final w = widget.weather;
+
+    // Code de l'icône sans le suffixe d/n (ex: "02d" → "02")
+    final iconCode = w.icon.replaceAll(RegExp(r'[dn]'), '');
+
     return Scaffold(
       body: SkyAtmosphere(
-        weatherIcon: widget.weather.icon,
+        // ── Heure locale RÉELLE de la ville (calculée via le timezone de l'API)
+        cityLocalHour: w.localHour,
+        // ── Jour/nuit selon l'API (pas l'heure du téléphone)
+        cityIsDaytime: w.isDaytime,
+        // ── Code météo pour le nombre de nuages
+        weatherIconCode: iconCode,
         child: SafeArea(
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ── Bouton retour ──────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: BackdropFilter(
-                            filter:
-                                ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color:
-                                    Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color:
-                                      Colors.white.withValues(alpha: 0.22),
-                                ),
-                              ),
-                              child: const Icon(Icons.arrow_back_rounded,
-                                  color: Colors.white, size: 20),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+          child: Column(
+            children: [
+              // ── Header FIXE (ne défile jamais) ────────────────────────────
+              _FixedHeader(cityName: w.city),
 
-              // ── Hero météo (style Apple Weather) ──────────────────────────
-              SliverToBoxAdapter(
+              // ── Contenu scrollable ─────────────────────────────────────────
+              Expanded(
                 child: FadeTransition(
                   opacity: _fade,
                   child: SlideTransition(
                     position: _slide,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Nom de la ville
-                          Text(
-                            widget.weather.city,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 38,
-                              fontWeight: FontWeight.w300,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
 
-                          // Condition météo
-                          Text(
-                            widget.weather.description,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.68),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Énorme température (style Apple — ultra fine)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.weather.temperature
-                                    .toStringAsFixed(0),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 100,
-                                  fontWeight: FontWeight.w100,
-                                  letterSpacing: -5,
-                                  height: 1,
-                                ),
+                            // ── Nom + condition ──────────────────────────────
+                            Text(
+                              w.city,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 38,
+                                fontWeight: FontWeight.w300,
+                                letterSpacing: -0.5,
                               ),
-                              const Padding(
-                                padding: EdgeInsets.only(top: 18),
-                                child: Text(
-                                  '°C',
-                                  style: TextStyle(
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              w.description,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.65),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // ── Température (Apple-style : ultra-fine, immense) ──
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  w.temperature.toStringAsFixed(0),
+                                  style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 34,
-                                    fontWeight: FontWeight.w200,
+                                    fontSize: 100,
+                                    fontWeight: FontWeight.w100,
+                                    letterSpacing: -5,
+                                    height: 1,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 18),
+                                  child: Text(
+                                    '°C',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 34,
+                                      fontWeight: FontWeight.w200,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
 
-                          // Icône + feeling
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Image.network(
-                                'https://openweathermap.org/img/wn/${widget.weather.icon}@2x.png',
-                                width: 48,
-                                height: 48,
-                                errorBuilder: (_, __, ___) => const Icon(
+                            // ── Icône + feeling ──────────────────────────────
+                            Row(
+                              children: [
+                                Image.network(
+                                  'https://openweathermap.org/img/wn/${w.icon}@2x.png',
+                                  width: 48,
+                                  height: 48,
+                                  errorBuilder: (_, _, _) => const Icon(
                                     Icons.wb_sunny_rounded,
                                     color: Colors.white,
-                                    size: 34),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _tempFeeling(widget.weather.temperature),
-                                style: TextStyle(
-                                  color:
-                                      Colors.white.withValues(alpha: 0.60),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w300,
+                                    size: 34,
+                                  ),
                                 ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _tempFeeling(w.temperature),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.58),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // ── Heure locale de la ville ─────────────────────
+                            const SizedBox(height: 8),
+                            _LocalTimeBadge(localHour: w.localHour),
+
+                            // ── Séparateur ───────────────────────────────────
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              child: Divider(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                thickness: 0.5,
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+
+                            // ── Grille infos 2×2 ─────────────────────────────
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _InfoTile(
+                                    icon: Icons.water_drop_rounded,
+                                    label: 'Humidité',
+                                    value: '${w.humidity}%',
+                                    iconColor: const Color(0xFF64B5F6),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _InfoTile(
+                                    icon: Icons.air_rounded,
+                                    label: 'Vent',
+                                    value: '${w.windSpeed} m/s',
+                                    iconColor: const Color(0xFF80CBC4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _InfoTile(
+                                    icon: Icons.my_location_rounded,
+                                    label: 'Latitude',
+                                    value: w.lat.toStringAsFixed(3),
+                                    iconColor: const Color(0xFFFFCC80),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _InfoTile(
+                                    icon: Icons.explore_rounded,
+                                    label: 'Longitude',
+                                    value: w.lon.toStringAsFixed(3),
+                                    iconColor: const Color(0xFFFFCC80),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // ── Bouton Google Maps ───────────────────────────
+                            const SizedBox(height: 24),
+                            _MapsButton(onTap: _openMaps),
+                            const SizedBox(height: 36),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-
-              // ── Séparateur ─────────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 28, vertical: 26),
-                  child: Divider(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    thickness: 0.5,
-                  ),
-                ),
-              ),
-
-              // ── Grille d'infos (style tuiles Apple Weather) ────────────────
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverGrid(
-                  delegate: SliverChildListDelegate([
-                    _InfoTile(
-                      icon: Icons.water_drop_rounded,
-                      label: 'Humidité',
-                      value: '${widget.weather.humidity}%',
-                      iconColor: const Color(0xFF64B5F6),
-                    ),
-                    _InfoTile(
-                      icon: Icons.air_rounded,
-                      label: 'Vent',
-                      value: '${widget.weather.windSpeed} m/s',
-                      iconColor: const Color(0xFF80CBC4),
-                    ),
-                    _InfoTile(
-                      icon: Icons.my_location_rounded,
-                      label: 'Latitude',
-                      value: widget.weather.lat.toStringAsFixed(3),
-                      iconColor: const Color(0xFFFFCC80),
-                    ),
-                    _InfoTile(
-                      icon: Icons.explore_rounded,
-                      label: 'Longitude',
-                      value: widget.weather.lon.toStringAsFixed(3),
-                      iconColor: const Color(0xFFFFCC80),
-                    ),
-                  ]),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 1.5,
-                  ),
-                ),
-              ),
-
-              // ── Bouton Google Maps ─────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 38),
-                  child: _MapsButton(onTap: _openMaps),
                 ),
               ),
             ],
@@ -264,7 +243,88 @@ class _DetailScreenState extends State<DetailScreen>
   }
 }
 
-// ─── Tuile d'info ─────────────────────────────────────────────────────────────
+// ─── Header fixe (toujours visible, même quand on scroll) ────────────────────
+
+class _FixedHeader extends StatelessWidget {
+  final String cityName;
+  const _FixedHeader({required this.cityName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Row(
+        children: [
+          // Bouton retour — toujours accessible
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Badge heure locale ───────────────────────────────────────────────────────
+
+class _LocalTimeBadge extends StatelessWidget {
+  final int localHour;
+  const _LocalTimeBadge({required this.localHour});
+
+  @override
+  Widget build(BuildContext context) {
+    final h = localHour;
+    final period = h >= 5 && h < 12
+        ? 'Matin'
+        : h < 18
+            ? 'Après-midi'
+            : h < 22
+                ? 'Soir'
+                : 'Nuit';
+    final display =
+        '${h.toString().padLeft(2, '0')}h locales · $period';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        display,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.70),
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Tuile info ───────────────────────────────────────────────────────────────
 
 class _InfoTile extends StatelessWidget {
   final IconData icon;
@@ -286,7 +346,7 @@ class _InfoTile extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.13),
             borderRadius: BorderRadius.circular(18),
@@ -297,9 +357,7 @@ class _InfoTile extends StatelessWidget {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Label + icône
               Row(
                 children: [
                   Icon(icon, size: 13, color: iconColor),
@@ -308,18 +366,18 @@ class _InfoTile extends StatelessWidget {
                     label.toUpperCase(),
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.52),
+                      color: Colors.white.withValues(alpha: 0.50),
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.8,
                     ),
                   ),
                 ],
               ),
-              // Valeur
+              const SizedBox(height: 10),
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 28,
+                  fontSize: 26,
                   fontWeight: FontWeight.w200,
                   color: Colors.white,
                   letterSpacing: -0.5,
@@ -363,6 +421,7 @@ class _MapsButtonState extends State<_MapsButton> {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
+              width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.16),

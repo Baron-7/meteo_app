@@ -58,7 +58,7 @@ class WeatherCard extends StatelessWidget {
                     'https://openweathermap.org/img/wn/${weather.icon}@2x.png',
                     width: 56,
                     height: 56,
-                    errorBuilder: (_, __, ___) {
+                    errorBuilder: (_, _, _) {
                       return Icon(Icons.wb_cloudy_rounded,
                           size: 44, color: Colors.white.withValues(alpha: 0.7));
                     },

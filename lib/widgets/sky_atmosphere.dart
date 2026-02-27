@@ -8,16 +8,24 @@ enum DayPeriod { dawn, morning, midday, afternoon, sunset, dusk, night }
 // ─── Widget principal ─────────────────────────────────────────────────────────
 
 /// Fond atmosphérique animé : ciel + soleil/lune + nuages + étoiles.
-/// [weatherIcon] : icône OpenWeather (ex. "01d", "02n") — détecte jour/nuit
-///                 de la VILLE. Null = heure locale de l'appareil.
+///
+/// [cityLocalHour]  : heure locale RÉELLE de la ville (calculée via timezone).
+///                    Si null → heure locale de l'appareil.
+/// [cityIsDaytime]  : true si l'API indique qu'il fait jour dans la ville.
+///                    Garantit qu'on ne montre pas la nuit quand c'est le jour.
+/// [weatherIconCode]: code météo OpenWeather (01, 02, 03…) pour le nombre de nuages.
 class SkyAtmosphere extends StatefulWidget {
   final Widget child;
-  final String? weatherIcon;
+  final int? cityLocalHour;
+  final bool? cityIsDaytime;
+  final String? weatherIconCode;
 
   const SkyAtmosphere({
     super.key,
     required this.child,
-    this.weatherIcon,
+    this.cityLocalHour,
+    this.cityIsDaytime,
+    this.weatherIconCode,
   });
 
   @override
@@ -26,7 +34,6 @@ class SkyAtmosphere extends StatefulWidget {
 
 class _SkyAtmosphereState extends State<SkyAtmosphere>
     with TickerProviderStateMixin {
-  // Controllers d'animation
   late final AnimationController _cloud1;
   late final AnimationController _cloud2;
   late final AnimationController _cloud3;
@@ -37,71 +44,70 @@ class _SkyAtmosphereState extends State<SkyAtmosphere>
   late int _hour;
 
   // Positions des étoiles (générées une seule fois)
-  late final List<List<double>> _starPositions;
+  late final List<List<double>> _stars;
 
   @override
   void initState() {
     super.initState();
 
-    final now = DateTime.now();
-    _hour = now.hour;
+    // ── Heure utilisée pour les effets ──
+    // Priorité : heure locale de la ville (API) > heure locale appareil
+    _hour = widget.cityLocalHour ?? DateTime.now().hour;
+    _period = _buildPeriod();
 
-    // Si une icône météo est fournie (ex: "01n"), on force nuit/jour
-    _period = _resolvePeriod();
-
-    // Génère les étoiles une seule fois avec une graine fixe
+    // Étoiles fixes (graine 42 → positions stables)
     final rng = math.Random(42);
-    _starPositions = List.generate(
-      30,
+    _stars = List.generate(
+      32,
       (_) => [
-        rng.nextDouble(),        // x (fraction de l'écran)
-        rng.nextDouble() * 0.60, // y (fraction — uniquement la moitié haute)
-        rng.nextDouble() * 1.5 + 0.8, // taille (1 à 2.3 px)
-        rng.nextDouble(),        // phase de scintillement
+        rng.nextDouble(),
+        rng.nextDouble() * 0.62,
+        rng.nextDouble() * 1.6 + 0.7,
+        rng.nextDouble(),
       ],
     );
 
-    // Nuages : durées différentes → vitesses différentes
+    // Nuages – durées différentes → vitesses différentes
     _cloud1 = AnimationController(
-      duration: const Duration(seconds: 42),
-      vsync: this,
-    )..repeat();
+        duration: const Duration(seconds: 42), vsync: this)
+      ..repeat();
 
     _cloud2 = AnimationController(
-      duration: const Duration(seconds: 60),
-      vsync: this,
-    );
+        duration: const Duration(seconds: 62), vsync: this);
     _cloud2.value = 0.38;
     _cloud2.repeat();
 
     _cloud3 = AnimationController(
-      duration: const Duration(seconds: 50),
-      vsync: this,
-    );
-    _cloud3.value = 0.70;
+        duration: const Duration(seconds: 52), vsync: this);
+    _cloud3.value = 0.72;
     _cloud3.repeat();
 
-    // Halo du soleil / pulsation
     _glow = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    )..repeat(reverse: true);
+        duration: const Duration(seconds: 2), vsync: this)
+      ..repeat(reverse: true);
 
-    // Scintillement des étoiles
     _twinkle = AnimationController(
-      duration: const Duration(seconds: 4),
-      vsync: this,
-    )..repeat();
+        duration: const Duration(seconds: 4), vsync: this)
+      ..repeat();
   }
 
-  /// Détermine la période selon l'heure locale et l'icône météo.
-  DayPeriod _resolvePeriod() {
-    // Si l'icône indique nuit (ex: "02n"), on force la nuit
-    if (widget.weatherIcon != null &&
-        widget.weatherIcon!.endsWith('n')) {
+  /// Détermine la période du jour à partir de l'heure locale de la VILLE.
+  DayPeriod _buildPeriod() {
+    final period = _periodFromHour(_hour);
+
+    // Si l'API dit "il fait jour" mais la période calculée est nuit/crépuscule
+    // → forcer "milieu de journée" (cas typique : utilisateur en Afrique,
+    //   New York en plein après-midi avec icône '01d')
+    if (widget.cityIsDaytime == true && _isNightPeriod(period)) {
+      return DayPeriod.midday;
+    }
+
+    // Si l'API dit "c'est la nuit" mais la période locale est jour → forcer nuit
+    if (widget.cityIsDaytime == false && !_isNightPeriod(period)) {
       return DayPeriod.night;
     }
-    return _periodFromHour(_hour);
+
+    return period;
   }
 
   DayPeriod _periodFromHour(int h) {
@@ -114,6 +120,9 @@ class _SkyAtmosphereState extends State<SkyAtmosphere>
     return DayPeriod.night;
   }
 
+  bool _isNightPeriod(DayPeriod p) =>
+      p == DayPeriod.night || p == DayPeriod.dusk;
+
   @override
   void dispose() {
     _cloud1.dispose();
@@ -124,147 +133,91 @@ class _SkyAtmosphereState extends State<SkyAtmosphere>
     super.dispose();
   }
 
-  // ── Getters utiles ──────────────────────────────────────────────────────────
+  // ── Getters ─────────────────────────────────────────────────────────────────
 
-  bool get _isNight =>
-      _period == DayPeriod.night || _period == DayPeriod.dusk;
-
+  bool get _isNight => _isNightPeriod(_period);
   bool get _showSun => !_isNight && _period != DayPeriod.dawn;
-
   bool get _showClouds => !_isNight;
 
-  // Combien de nuages selon la condition météo
+  /// Nombre de nuages selon le code météo OpenWeather (01 = dégagé, 04 = couvert)
   int get _cloudCount {
-    if (widget.weatherIcon == null) {
-      return _period == DayPeriod.midday ? 2 : 3;
-    }
-    final code = widget.weatherIcon!.replaceAll(RegExp(r'[dn]'), '');
-    if (code == '01') return 0; // Ciel dégagé
-    if (code == '02') return 1; // Quelques nuages
-    if (code == '03') return 2; // Nuages épars
-    return 3; // Couvert / pluie
+    final code = widget.weatherIconCode ?? '';
+    if (code == '01') return 0;
+    if (code == '02') return 1;
+    if (code == '03') return 2;
+    if (code.isEmpty) return (_period == DayPeriod.midday ? 2 : 2);
+    return 3; // 04, 09, 10, 11, 13, 50 → couvert / pluie / neige
   }
-
-  // ── Couleurs du ciel selon la période ──────────────────────────────────────
 
   List<Color> get _skyGradient {
     switch (_period) {
       case DayPeriod.dawn:
-        return [
-          const Color(0xFF1A1038),
-          const Color(0xFFB05070),
-          const Color(0xFFE88050),
-        ];
+        return [const Color(0xFF1A1038), const Color(0xFFB05070), const Color(0xFFE88050)];
       case DayPeriod.morning:
-        return [
-          const Color(0xFF4DA8DA),
-          const Color(0xFF72C8F0),
-          const Color(0xFFFFD080),
-        ];
+        return [const Color(0xFF4DA8DA), const Color(0xFF72C8F0), const Color(0xFFFFD080)];
       case DayPeriod.midday:
-        return [
-          const Color(0xFF1976D2),
-          const Color(0xFF2196F3),
-          const Color(0xFF64B5F6),
-        ];
+        return [const Color(0xFF1976D2), const Color(0xFF2196F3), const Color(0xFF64B5F6)];
       case DayPeriod.afternoon:
-        return [
-          const Color(0xFF1565C0),
-          const Color(0xFF42A5F5),
-          const Color(0xFFFFB74D),
-        ];
+        return [const Color(0xFF1565C0), const Color(0xFF42A5F5), const Color(0xFFFFB74D)];
       case DayPeriod.sunset:
-        return [
-          const Color(0xFF7B1FA2),
-          const Color(0xFFE53935),
-          const Color(0xFFFF9800),
-        ];
+        return [const Color(0xFF7B1FA2), const Color(0xFFE53935), const Color(0xFFFF9800)];
       case DayPeriod.dusk:
-        return [
-          const Color(0xFF1A0A2E),
-          const Color(0xFF3D1C6E),
-          const Color(0xFF5E3090),
-        ];
+        return [const Color(0xFF1A0A2E), const Color(0xFF3D1C6E), const Color(0xFF5E3090)];
       case DayPeriod.night:
-        return [
-          const Color(0xFF050C1A),
-          const Color(0xFF0A1628),
-          const Color(0xFF0D2040),
-        ];
+        return [const Color(0xFF050C1A), const Color(0xFF0A1628), const Color(0xFF0D2040)];
     }
   }
 
-  // Teinte des nuages selon la période
   Color get _cloudTint {
     switch (_period) {
-      case DayPeriod.sunset:
-        return const Color(0xFFFFCCBB);
+      case DayPeriod.sunset:   return const Color(0xFFFFCCBB);
       case DayPeriod.morning:
-      case DayPeriod.dawn:
-        return const Color(0xFFFFF0E0);
-      default:
-        return Colors.white;
+      case DayPeriod.dawn:     return const Color(0xFFFFF0E0);
+      default:                 return Colors.white;
     }
   }
 
-  double get _cloudOpacityBase {
+  double get _cloudOpacity {
     switch (_period) {
-      case DayPeriod.midday:
-        return 0.42;
-      case DayPeriod.morning:
-        return 0.58;
-      case DayPeriod.sunset:
-        return 0.50;
-      default:
-        return 0.38;
+      case DayPeriod.morning:  return 0.58;
+      case DayPeriod.midday:   return 0.42;
+      case DayPeriod.sunset:   return 0.50;
+      default:                 return 0.38;
     }
   }
 
-  // ── Position du soleil ──────────────────────────────────────────────────────
-
-  // Arc est-ouest selon l'heure (5h = gauche/bas, 12h = centre/haut, 20h = droite/bas)
-  double _sunXFraction() {
+  // Arc solaire : heure 5 → gauche/bas, heure 12 → centre/haut, heure 20 → droite/bas
+  double _sunX(double w) {
     final t = ((_hour - 5) / 15.0).clamp(0.0, 1.0);
-    return 0.08 + t * 0.84;
+    return (0.08 + t * 0.84) * w;
   }
 
-  double _sunYFraction() {
+  double _sunY(double h) {
     final t = ((_hour - 5) / 15.0).clamp(0.0, 1.0);
-    final arc = math.sin(t * math.pi); // 0 → 1 → 0
-    return 0.52 - arc * 0.40; // Horizon (0.52) → Zénith (0.12)
+    return (0.52 - math.sin(t * math.pi) * 0.40) * h;
   }
 
-  // Taille du soleil : plus grand près de l'horizon (matin/soir)
   double get _sunSize {
     switch (_period) {
       case DayPeriod.dawn:
-      case DayPeriod.sunset:
-        return 88;
-      case DayPeriod.midday:
-        return 60;
-      default:
-        return 72;
+      case DayPeriod.sunset:  return 88;
+      case DayPeriod.midday:  return 60;
+      default:                return 72;
     }
   }
 
   Color get _sunColor {
     switch (_period) {
-      case DayPeriod.dawn:
-        return const Color(0xFFFF7043);
-      case DayPeriod.morning:
-        return const Color(0xFFFFCA28);
-      case DayPeriod.midday:
-        return const Color(0xFFFFEE58);
-      case DayPeriod.afternoon:
-        return const Color(0xFFFFB300);
-      case DayPeriod.sunset:
-        return const Color(0xFFFF6D00);
-      default:
-        return const Color(0xFFFFD740);
+      case DayPeriod.dawn:      return const Color(0xFFFF7043);
+      case DayPeriod.morning:   return const Color(0xFFFFCA28);
+      case DayPeriod.midday:    return const Color(0xFFFFEE58);
+      case DayPeriod.afternoon: return const Color(0xFFFFB300);
+      case DayPeriod.sunset:    return const Color(0xFFFF6D00);
+      default:                  return const Color(0xFFFFD740);
     }
   }
 
-  // ── build ───────────────────────────────────────────────────────────────────
+  // ── build ────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -280,70 +233,68 @@ class _SkyAtmosphereState extends State<SkyAtmosphere>
       ),
       child: Stack(
         children: [
-          // ── Étoiles (nuit / dusk / aube) ──────────────────────────────────
-          if (_isNight || _period == DayPeriod.dawn)
-            _StarField(
-              controller: _twinkle,
-              stars: _starPositions,
-              opacity: _period == DayPeriod.dawn ? 0.35 : 1.0,
-            ),
+          // ── Éléments atmosphériques (IgnorePointer → jamais de blocage de touch) ──
+          IgnorePointer(
+            child: Stack(
+              children: [
+                // Étoiles
+                if (_isNight || _period == DayPeriod.dusk || _period == DayPeriod.dawn)
+                  _StarField(
+                    controller: _twinkle,
+                    stars: _stars,
+                    opacity: _period == DayPeriod.dawn ? 0.30 : 1.0,
+                  ),
 
-          // ── Lune (nuit) ────────────────────────────────────────────────────
-          if (_isNight)
-            const Positioned(
-              right: 55,
-              top: 55,
-              child: _Moon(),
-            ),
+                // Lune
+                if (_isNight)
+                  const Positioned(right: 55, top: 55, child: _Moon()),
 
-          // ── Soleil ─────────────────────────────────────────────────────────
-          if (_showSun)
-            AnimatedBuilder(
-              animation: _glow,
-              builder: (context, child) {
-                return Positioned(
-                  left: _sunXFraction() * size.width - _sunSize / 2 - 10,
-                  top: _sunYFraction() * size.height - _sunSize / 2 - 10,
-                  child: child!,
-                );
-              },
-              child: _Sun(
-                glowCtrl: _glow,
-                size: _sunSize,
-                color: _sunColor,
-              ),
-            ),
+                // Soleil (positionné selon l'heure locale de la VILLE)
+                if (_showSun)
+                  AnimatedBuilder(
+                    animation: _glow,
+                    builder: (ctx, child) => Positioned(
+                      left: _sunX(size.width) - _sunSize / 2 - 10,
+                      top: _sunY(size.height) - _sunSize / 2 - 10,
+                      child: child!,
+                    ),
+                    child: _Sun(
+                      glowCtrl: _glow,
+                      size: _sunSize,
+                      color: _sunColor,
+                    ),
+                  ),
 
-          // ── Nuages ─────────────────────────────────────────────────────────
-          if (_showClouds && _cloudCount >= 1)
-            _Cloud(
-              controller: _cloud1,
-              initialPhase: 0.05,
-              top: size.height * 0.09,
-              width: 180,
-              color: _cloudTint,
-              opacity: _cloudOpacityBase,
+                // Nuages
+                if (_showClouds && _cloudCount >= 1)
+                  _Cloud(
+                    controller: _cloud1,
+                    top: size.height * 0.09,
+                    width: 180,
+                    color: _cloudTint,
+                    opacity: _cloudOpacity,
+                  ),
+                if (_showClouds && _cloudCount >= 2)
+                  _Cloud(
+                    controller: _cloud2,
+                    top: size.height * 0.18,
+                    width: 240,
+                    color: _cloudTint,
+                    opacity: _cloudOpacity - 0.08,
+                  ),
+                if (_showClouds && _cloudCount >= 3)
+                  _Cloud(
+                    controller: _cloud3,
+                    top: size.height * 0.06,
+                    width: 140,
+                    color: _cloudTint,
+                    opacity: _cloudOpacity - 0.13,
+                  ),
+              ],
             ),
-          if (_showClouds && _cloudCount >= 2)
-            _Cloud(
-              controller: _cloud2,
-              initialPhase: 0.0,
-              top: size.height * 0.18,
-              width: 240,
-              color: _cloudTint,
-              opacity: _cloudOpacityBase - 0.08,
-            ),
-          if (_showClouds && _cloudCount >= 3)
-            _Cloud(
-              controller: _cloud3,
-              initialPhase: 0.0,
-              top: size.height * 0.06,
-              width: 140,
-              color: _cloudTint,
-              opacity: _cloudOpacityBase - 0.12,
-            ),
+          ),
 
-          // ── Contenu de l'écran ─────────────────────────────────────────────
+          // ── Contenu de l'écran (reçoit tous les touches) ──
           widget.child,
         ],
       ),
@@ -358,42 +309,32 @@ class _Sun extends StatelessWidget {
   final double size;
   final Color color;
 
-  const _Sun({
-    required this.glowCtrl,
-    required this.size,
-    required this.color,
-  });
+  const _Sun({required this.glowCtrl, required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    final haloSize = size + 44;
-
+    final halo = size + 44;
     return AnimatedBuilder(
       animation: glowCtrl,
-      builder: (context, child) {
-        final pulse = 0.25 + glowCtrl.value * 0.18;
-
+      builder: (_, child) {
+        final pulse = 0.22 + glowCtrl.value * 0.18;
         return SizedBox(
-          width: haloSize,
-          height: haloSize,
+          width: halo,
+          height: halo,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Halo externe doux
               Container(
-                width: haloSize,
-                height: haloSize,
+                width: halo,
+                height: halo,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      color.withValues(alpha: pulse),
-                      Colors.transparent,
-                    ],
-                  ),
+                  gradient: RadialGradient(colors: [
+                    color.withValues(alpha: pulse),
+                    Colors.transparent,
+                  ]),
                 ),
               ),
-              // Corps du soleil
               Container(
                 width: size,
                 height: size,
@@ -430,21 +371,17 @@ class _Moon extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Halo lunaire
           Container(
             width: 80,
             height: 80,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  Colors.white.withValues(alpha: 0.12),
-                  Colors.transparent,
-                ],
-              ),
+              gradient: RadialGradient(colors: [
+                Colors.white.withValues(alpha: 0.12),
+                Colors.transparent,
+              ]),
             ),
           ),
-          // Corps de la lune
           Container(
             width: 48,
             height: 48,
@@ -460,7 +397,7 @@ class _Moon extends StatelessWidget {
               ],
             ),
           ),
-          // Ombre qui crée le croissant
+          // Ombre pour simuler le croissant
           Positioned(
             left: 14,
             top: 8,
@@ -469,7 +406,7 @@ class _Moon extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF1A2A4A).withValues(alpha: 0.65),
+                color: const Color(0xFF0D1B3E).withValues(alpha: 0.70),
               ),
             ),
           ),
@@ -499,14 +436,12 @@ class _StarField extends StatelessWidget {
 
     return AnimatedBuilder(
       animation: controller,
-      builder: (context, _) {
+      builder: (_, _) {
         return Stack(
           children: stars.map((s) {
             final phase = (s[3] + controller.value) % 1.0;
-            // Scintillement : valeur entre 0.25 et 1.0
             final alpha =
                 opacity * (0.25 + 0.75 * math.sin(phase * math.pi).abs());
-
             return Positioned(
               left: s[0] * w,
               top: s[1] * h,
@@ -515,7 +450,8 @@ class _StarField extends StatelessWidget {
                 height: s[2],
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: alpha.clamp(0.0, 1.0)),
+                  color: Colors.white
+                      .withValues(alpha: alpha.clamp(0.0, 1.0)),
                 ),
               ),
             );
@@ -530,7 +466,6 @@ class _StarField extends StatelessWidget {
 
 class _Cloud extends StatelessWidget {
   final AnimationController controller;
-  final double initialPhase; // 0.0 → 1.0
   final double top;
   final double width;
   final Color color;
@@ -538,7 +473,6 @@ class _Cloud extends StatelessWidget {
 
   const _Cloud({
     required this.controller,
-    required this.initialPhase,
     required this.top,
     required this.width,
     required this.color,
@@ -551,18 +485,10 @@ class _Cloud extends StatelessWidget {
 
     return AnimatedBuilder(
       animation: controller,
-      builder: (context, child) {
-        // Phase combinée : décalage initial + progression
-        final phase = (controller.value + initialPhase) % 1.0;
-        // x : commence hors-écran à droite, finit hors-écran à gauche
-        final totalTravel = screenW + width + 40;
-        final x = (1 - phase) * totalTravel - width - 20;
-
-        return Positioned(
-          left: x,
-          top: top,
-          child: child!,
-        );
+      builder: (_, child) {
+        final total = screenW + width + 40;
+        final x = (1 - controller.value) * total - width - 20;
+        return Positioned(left: x, top: top, child: child!);
       },
       child: Opacity(
         opacity: opacity,
@@ -572,7 +498,6 @@ class _Cloud extends StatelessWidget {
   }
 }
 
-/// Forme de nuage réaliste (corps + 3 boursouflures)
 class _CloudShape extends StatelessWidget {
   final double width;
   final Color color;
@@ -587,11 +512,9 @@ class _CloudShape extends StatelessWidget {
       height: h,
       child: Stack(
         children: [
-          // Base plate
+          // Base
           Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
+            bottom: 0, left: 0, right: 0,
             child: Container(
               height: h * 0.50,
               decoration: BoxDecoration(
@@ -602,41 +525,26 @@ class _CloudShape extends StatelessWidget {
           ),
           // Boursouflure gauche
           Positioned(
-            bottom: h * 0.28,
-            left: width * 0.06,
+            bottom: h * 0.28, left: width * 0.06,
             child: Container(
-              width: width * 0.36,
-              height: width * 0.36,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              width: width * 0.36, height: width * 0.36,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
           ),
           // Boursouflure centre (la plus haute)
           Positioned(
-            bottom: h * 0.36,
-            left: width * 0.30,
+            bottom: h * 0.36, left: width * 0.30,
             child: Container(
-              width: width * 0.40,
-              height: width * 0.40,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              width: width * 0.40, height: width * 0.40,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
           ),
           // Boursouflure droite
           Positioned(
-            bottom: h * 0.22,
-            right: width * 0.06,
+            bottom: h * 0.22, right: width * 0.06,
             child: Container(
-              width: width * 0.32,
-              height: width * 0.32,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              width: width * 0.32, height: width * 0.32,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
           ),
         ],
