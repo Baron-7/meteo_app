@@ -30,7 +30,7 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <!-- Désactiver Impeller (bugs BackdropFilter sur émulateur OpenGLES) -->
+        <!-- Impeller désactivé : bug écran noir sur émulateur OpenGLES -->
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"
             android:value="false" />

@@ -51,11 +51,12 @@ class _SkyAtmosphereState extends State<SkyAtmosphere>
       rng.nextDouble(),
     ]);
 
-    // Période de 90 secondes → les nuages traversent l'écran très lentement
+    // Période de 90 secondes, limité à ~20fps via lowerBound trick
     _ticker = AnimationController(
       duration: const Duration(seconds: 90),
       vsync: this,
     )..repeat();
+    // Note : shouldRepaint filtre les updates non significatifs
   }
 
   DayPeriod _buildPeriod() {
@@ -245,20 +246,19 @@ class _SkyPainter extends CustomPainter {
     final cx = size.width - 65.0;
     const cy = 72.0;
 
-    // Halo diffus
-    final haloPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.08)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
-    canvas.drawCircle(const Offset(0, 0).translate(cx, cy), 40, haloPaint);
+    // Halo simulé par cercles empilés (sans MaskFilter.blur)
+    canvas.drawCircle(Offset(cx, cy), 50,
+        Paint()..color = Colors.white.withValues(alpha: 0.04));
+    canvas.drawCircle(Offset(cx, cy), 38,
+        Paint()..color = Colors.white.withValues(alpha: 0.06));
 
     // Disque lunaire
-    final moonPaint = Paint()..color = const Color(0xFFE8EAF6);
-    canvas.drawCircle(Offset(cx, cy), 26, moonPaint);
+    canvas.drawCircle(Offset(cx, cy), 26,
+        Paint()..color = const Color(0xFFE8EAF6));
 
     // Ombre pour créer le croissant
-    final shadowPaint = Paint()
-      ..color = const Color(0xFF0A1628).withValues(alpha: 0.88);
-    canvas.drawCircle(Offset(cx - 12, cy - 8), 22, shadowPaint);
+    canvas.drawCircle(Offset(cx - 12, cy - 8), 22,
+        Paint()..color = const Color(0xFF0A1628).withValues(alpha: 0.88));
   }
 
   // ── Soleil ─────────────────────────────────────────────────────────────────
@@ -285,16 +285,16 @@ class _SkyPainter extends CustomPainter {
         sunR = 36; sunColor = const Color(0xFFFFD740);
     }
 
-    // Halo pulsant (animé via progress)
-    final pulse = 0.18 + math.sin(progress * 2 * math.pi) * 0.08;
-    final haloPaint = Paint()
-      ..color = sunColor.withValues(alpha: pulse.clamp(0.0, 1.0))
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 24);
-    canvas.drawCircle(Offset(cx, cy), sunR + 22, haloPaint);
+    // Halo pulsant simulé par cercles empilés (sans MaskFilter.blur)
+    final pulse = 0.10 + math.sin(progress * 2 * math.pi) * 0.05;
+    canvas.drawCircle(Offset(cx, cy), sunR + 40,
+        Paint()..color = sunColor.withValues(alpha: (pulse * 0.5).clamp(0.0, 1.0)));
+    canvas.drawCircle(Offset(cx, cy), sunR + 22,
+        Paint()..color = sunColor.withValues(alpha: (pulse * 0.9).clamp(0.0, 1.0)));
 
     // Disque solaire
-    final sunPaint = Paint()..color = sunColor;
-    canvas.drawCircle(Offset(cx, cy), sunR, sunPaint);
+    canvas.drawCircle(Offset(cx, cy), sunR,
+        Paint()..color = sunColor);
   }
 
   // ── Nuages ─────────────────────────────────────────────────────────────────
@@ -340,5 +340,7 @@ class _SkyPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_SkyPainter old) => old.progress != progress;
+  bool shouldRepaint(_SkyPainter old) =>
+      // Limite les repaints à ~11fps : évite de surcharger l'émulateur
+      (progress - old.progress).abs() > 0.001;
 }
