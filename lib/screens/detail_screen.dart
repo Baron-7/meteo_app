@@ -3,6 +3,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/weather_model.dart';
 import '../widgets/sky_atmosphere.dart';
 
+// helper to pick contrasting text color depending on theme
+Color _onBg(BuildContext context, [double opacity = 1]) =>
+    Theme.of(context).colorScheme.onBackground.withOpacity(opacity);
+
 class DetailScreen extends StatefulWidget {
   final WeatherModel weather;
   const DetailScreen({super.key, required this.weather});
@@ -85,8 +89,8 @@ class _DetailScreenState extends State<DetailScreen>
                             // ── Nom + condition ──────────────────────────────
                             Text(
                               w.city,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: _onBg(context),
                                 fontSize: 38,
                                 fontWeight: FontWeight.w300,
                                 letterSpacing: -0.5,
@@ -96,7 +100,7 @@ class _DetailScreenState extends State<DetailScreen>
                             Text(
                               w.description,
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.65),
+                                color: _onBg(context, 0.65),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w300,
                               ),
@@ -110,20 +114,20 @@ class _DetailScreenState extends State<DetailScreen>
                               children: [
                                 Text(
                                   w.temperature.toStringAsFixed(0),
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: _onBg(context),
                                     fontSize: 100,
                                     fontWeight: FontWeight.w100,
                                     letterSpacing: -5,
                                     height: 1,
                                   ),
                                 ),
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 18),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 18),
                                   child: Text(
                                     '°C',
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: _onBg(context),
                                       fontSize: 34,
                                       fontWeight: FontWeight.w200,
                                     ),
@@ -139,9 +143,9 @@ class _DetailScreenState extends State<DetailScreen>
                                   'https://openweathermap.org/img/wn/${w.icon}@2x.png',
                                   width: 48,
                                   height: 48,
-                                  errorBuilder: (_, _, _) => const Icon(
+                                  errorBuilder: (_, _, _) => Icon(
                                     Icons.wb_sunny_rounded,
-                                    color: Colors.white,
+                                    color: _onBg(context),
                                     size: 34,
                                   ),
                                 ),
@@ -149,7 +153,7 @@ class _DetailScreenState extends State<DetailScreen>
                                 Text(
                                   _tempFeeling(w.temperature),
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.58),
+                                    color: _onBg(context, 0.58),
                                     fontSize: 15,
                                     fontWeight: FontWeight.w300,
                                   ),
@@ -166,7 +170,7 @@ class _DetailScreenState extends State<DetailScreen>
                               padding:
                                   const EdgeInsets.symmetric(vertical: 24),
                               child: Divider(
-                                color: Colors.white.withValues(alpha: 0.15),
+                                color: _onBg(context, 0.15),
                                 thickness: 0.5,
                               ),
                             ),
@@ -251,6 +255,13 @@ class _FixedHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var boxDecoration = BoxDecoration(
+                color: _onBg(context, 0.22),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _onBg(context, 0.30),
+                ),
+              );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
@@ -259,16 +270,10 @@ class _FixedHeader extends StatelessWidget {
             onTap: () => Navigator.pop(context),
             child: Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.22),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.30),
-                ),
-              ),
-              child: const Icon(
+              decoration: boxDecoration,
+              child: Icon(
                 Icons.arrow_back_rounded,
-                color: Colors.white,
+                color: _onBg(context),
                 size: 20,
               ),
             ),
@@ -301,14 +306,14 @@ class _LocalTimeBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
+        color: _onBg(context, 0.18),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.26)),
+        border: Border.all(color: _onBg(context, 0.26)),
       ),
       child: Text(
         display,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.70),
+          color: _onBg(context, 0.70),
           fontSize: 12,
           fontWeight: FontWeight.w400,
         ),
@@ -337,10 +342,10 @@ class _InfoTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.20),
+        color: _onBg(context, 0.20),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.26),
+          color: _onBg(context, 0.26),
           width: 0.8,
         ),
       ),
@@ -355,7 +360,7 @@ class _InfoTile extends StatelessWidget {
                 label.toUpperCase(),
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.50),
+                  color: _onBg(context, 0.50),
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.8,
                 ),
@@ -365,10 +370,10 @@ class _InfoTile extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w200,
-              color: Colors.white,
+              color: _onBg(context),
               letterSpacing: -0.5,
             ),
           ),
@@ -407,21 +412,21 @@ class _MapsButtonState extends State<_MapsButton> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 18),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.22),
+            color: _onBg(context, 0.22),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.34),
+              color: _onBg(context, 0.34),
             ),
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.map_rounded, color: Colors.white, size: 20),
+              Icon(Icons.map_rounded, color: _onBg(context), size: 20),
               SizedBox(width: 10),
               Text(
                 'Voir sur Google Maps',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: _onBg(context),
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),

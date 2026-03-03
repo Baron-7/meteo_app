@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/weather_model.dart';
 
+// helper to pick contrasting foreground color depending on theme
+Color _onBg(BuildContext context, [double opacity = 1]) =>
+    Theme.of(context).colorScheme.onBackground.withOpacity(opacity);
+
+
 class WeatherCard extends StatelessWidget {
   final WeatherModel weather;
   final VoidCallback onTap;
@@ -38,10 +43,10 @@ class WeatherCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.22),
+          color: _onBg(context, 0.22),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.30),
+            color: _onBg(context, 0.30),
             width: 1,
           ),
         ),
@@ -54,7 +59,7 @@ class WeatherCard extends StatelessWidget {
               height: 56,
               errorBuilder: (_, _, _) {
                 return Icon(Icons.wb_cloudy_rounded,
-                    size: 44, color: Colors.white.withValues(alpha: 0.7));
+                    size: 44, color: _onBg(context, 0.7));
               },
             ),
 
@@ -67,8 +72,8 @@ class WeatherCard extends StatelessWidget {
                 children: [
                   Text(
                     weather.city,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: _onBg(context),
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
@@ -77,7 +82,7 @@ class WeatherCard extends StatelessWidget {
                   Text(
                     weather.description,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.65),
+                      color: _onBg(context, 0.65),
                       fontSize: 13,
                     ),
                   ),
@@ -127,7 +132,7 @@ class WeatherCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: Colors.white.withValues(alpha: 0.35),
+                  color: _onBg(context, 0.35),
                   size: 18,
                 ),
               ],
@@ -160,7 +165,7 @@ class _MiniStat extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.white.withValues(alpha: 0.55),
+            color: _onBg(context, 0.55),
           ),
         ),
       ],
