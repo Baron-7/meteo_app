@@ -126,10 +126,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
 
                 SafeArea(
-                  child: FadeTransition(
-                    opacity: _fadeIn,
-                    child: Column(
-                      children: [
+                  child: SingleChildScrollView(
+                    child: FadeTransition(
+                      opacity: _fadeIn,
+                      child: Column(
+                        children: [
                         // ── Top bar ────────────────────────────────────
                         Padding(
                           padding: const EdgeInsets.fromLTRB(44, 16, 24, 0),
@@ -205,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
 
-                        const Spacer(flex: 2),
+                        const SizedBox(height: 40),
 
                         // ── Hero ──────────────────────────────────────
                         SlideTransition(
@@ -270,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
 
-                        const Spacer(flex: 2),
+                        const SizedBox(height: 40),
 
                         // ── Carte villes ──────────────────────────────
                         SlideTransition(
@@ -279,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               shimmerCtrl: _shimmerCtrl, palette: p),
                         ),
 
-                        const Spacer(flex: 2),
+                        const SizedBox(height: 40),
 
                         // ── Bouton CTA ────────────────────────────────
                         SlideTransition(
@@ -307,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-              ],
+            )],
             ),
           ),
         );
